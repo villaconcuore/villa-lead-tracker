@@ -2,6 +2,8 @@
 
 A no-login React/Vite MVP for tracking Villa Con Cuore leads in the browser.
 
+Public app: https://villaconcuore.github.io/villa-lead-tracker/
+
 ## Features
 
 - Clean mobile-friendly lead dashboard

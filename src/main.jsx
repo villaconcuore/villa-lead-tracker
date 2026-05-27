@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   CalendarDays,
+  CircleDot,
   Download,
   Edit3,
   Mail,
@@ -19,6 +20,13 @@ const statusOptions = ["New", "Contacted", "Follow-Up", "Booked", "Closed"];
 const leadTypeOptions = ["Wedding", "Corporate", "Retreat", "Private Event", "Lodging", "Other"];
 const interestOptions = ["Villa Rental", "Event Booking", "Tour", "Partnership", "Photo Shoot", "Other"];
 const assigneeOptions = ["Elvis", "Concierge", "Events", "Sales"];
+
+const statCards = [
+  { key: "total", label: "Total Leads", detail: "All inquiries" },
+  { key: "new", label: "New", detail: "Needs first touch" },
+  { key: "due", label: "Due Follow-Ups", detail: "Today or overdue" },
+  { key: "booked", label: "Booked", detail: "Confirmed interest" },
+];
 
 const blankLead = {
   contactName: "",
@@ -353,30 +361,28 @@ function App() {
         <div>
           <p className="eyebrow">Villa Con Cuore</p>
           <h1>Lead Tracker</h1>
+          <p className="hero-copy">A quiet, no-login workspace for inquiries, next steps, and event follow-through.</p>
         </div>
-        <button className="secondary-button" type="button" onClick={exportCsv}>
-          <Download size={18} />
-          Export CSV
-        </button>
+        <div className="hero-actions">
+          <span className="sync-pill">
+            <CircleDot size={12} />
+            Browser saved
+          </span>
+          <button className="secondary-button" type="button" onClick={exportCsv}>
+            <Download size={18} />
+            Export CSV
+          </button>
+        </div>
       </header>
 
       <section className="stats-grid" aria-label="Lead stats">
-        <article>
-          <span>Total Leads</span>
-          <strong>{stats.total}</strong>
-        </article>
-        <article>
-          <span>New</span>
-          <strong>{stats.new}</strong>
-        </article>
-        <article>
-          <span>Due Follow-Ups</span>
-          <strong>{stats.due}</strong>
-        </article>
-        <article>
-          <span>Booked</span>
-          <strong>{stats.booked}</strong>
-        </article>
+        {statCards.map((card) => (
+          <article key={card.key}>
+            <span>{card.label}</span>
+            <strong>{stats[card.key]}</strong>
+            <small>{card.detail}</small>
+          </article>
+        ))}
       </section>
 
       <section className="dashboard-grid">
@@ -448,7 +454,7 @@ function App() {
                 <div className="lead-meta">
                   <span>{lead.leadType}</span>
                   <span>{lead.interest}</span>
-                  <span>{lead.followUpDate || "No follow-up"}</span>
+                  <span className={lead.followUpDate ? "date-chip" : ""}>{lead.followUpDate || "No follow-up"}</span>
                 </div>
               </article>
             ))}
