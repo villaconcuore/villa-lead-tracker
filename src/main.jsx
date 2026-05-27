@@ -163,14 +163,12 @@ function cleanForm(form) {
 
 function validateLead(lead) {
   if (!lead.contactName) return "Add a contact name before saving.";
-  if (!lead.email && !lead.phone) return "Add an email or phone number so the team can follow up.";
   if (lead.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email)) {
     return "Use a valid email address, or leave email blank.";
   }
   if (lead.phone) {
     const digits = lead.phone.replace(/\D/g, "");
-    const phoneHasAllowedChars = /^[0-9()+\-\s.]+$/.test(lead.phone);
-    if (!phoneHasAllowedChars || digits.length < 7) return "Use a valid phone number, or leave phone blank.";
+    if (digits.length > 0 && digits.length < 7) return "Use a valid phone number, or leave phone blank.";
   }
   return "";
 }
