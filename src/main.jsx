@@ -33,10 +33,10 @@ const sortOptions = [
 ];
 
 const statCards = [
-  { key: "total", label: "Total Leads", detail: "All inquiries" },
-  { key: "new", label: "New", detail: "Needs first touch" },
-  { key: "due", label: "Due Follow-Ups", detail: "Today or overdue" },
-  { key: "booked", label: "Booked", detail: "Confirmed bookings" },
+  { key: "total", label: "Leads", detail: "In the book" },
+  { key: "new", label: "New", detail: "Fresh inquiries" },
+  { key: "due", label: "Due", detail: "Needs follow-up" },
+  { key: "booked", label: "Booked", detail: "Confirmed" },
 ];
 
 const blankLead = {
@@ -251,8 +251,8 @@ function LeadForm({
     <form className="lead-form" onSubmit={onSubmit}>
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">{isEditing ? "Edit Lead" : "Add Lead"}</p>
-          <h2>{isEditing ? form.contactName || "Lead details" : "New inquiry"}</h2>
+          <p className="eyebrow">{isEditing ? "Refine Lead" : "New Lead"}</p>
+          <h2>{isEditing ? form.contactName || "Lead details" : "Add to the lead book"}</h2>
         </div>
         <div className="heading-actions">
           <button
@@ -278,8 +278,8 @@ function LeadForm({
       </div>
       <p className="dictation-hint">
         {dictationSupported
-          ? `Dictation fills the selected field: ${activeLabel}.`
-          : "Dictation needs a browser with speech recognition, such as Chrome or Safari."}
+          ? `Dictation will fill ${activeLabel}.`
+          : "Dictation works best in Chrome or Safari."}
       </p>
 
       <div className="contact-tools" aria-label="Contact import tools">
@@ -294,11 +294,11 @@ function LeadForm({
           }
         >
           <UserPlus size={17} />
-          Add from Contacts
+          Contact
         </button>
         <button className="secondary-button" type="button" onClick={() => contactFileRef.current?.click()}>
           <FileUp size={17} />
-          Import vCard
+          vCard
         </button>
         <button className="text-button" type="button" onClick={onShowContactHelp}>
           <Info size={15} />
@@ -312,7 +312,7 @@ function LeadForm({
           onChange={onImportContactFile}
         />
       </div>
-      <p className="draft-hint">Drafts save automatically if you leave and come back.</p>
+      <p className="draft-hint">Draft saved automatically.</p>
 
       <div className="form-grid">
         <label>
@@ -326,12 +326,12 @@ function LeadForm({
           />
         </label>
         <label>
-          Organization / Business
+          Organization
           <input
             value={form.organization}
             onFocus={() => onFieldFocus("organization")}
             onChange={(event) => onChange("organization", event.target.value)}
-            placeholder="Company, family, agency"
+            placeholder="Company, family, collector, agency"
           />
         </label>
         <label>
@@ -371,7 +371,7 @@ function LeadForm({
           </select>
         </label>
         <label className="wide-field">
-          Follow-up date
+          Follow-up
           <input
             type="date"
             value={form.followUpDate}
@@ -379,7 +379,7 @@ function LeadForm({
           />
         </label>
         <label className="wide-field">
-          Notes
+          Notes / next step
           <textarea
             value={form.notes}
             onFocus={() => onFieldFocus("notes")}
@@ -733,17 +733,17 @@ function App() {
       <header className="hero">
         <div>
           <p className="eyebrow">Villa Con Cuore</p>
-          <h1>Lead Tracker</h1>
-          <p className="hero-copy">A simple no-login workspace for inquiries, next steps, and team follow-through.</p>
+          <h1>Villa Con Cuore</h1>
+          <p className="hero-copy">Private Art Estate Lead Book</p>
         </div>
         <div className="hero-actions">
           <span className="sync-pill">
             <CircleDot size={12} />
-            Device saved
+            Private link
           </span>
           <button className="secondary-button" type="button" onClick={exportCsv}>
             <Download size={18} />
-            Export CSV
+            Export
           </button>
         </div>
       </header>
@@ -767,20 +767,19 @@ function App() {
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">iPhone Contacts</p>
-                <h2 id="contact-help-title">Add a saved contact</h2>
+                <h2 id="contact-help-title">Import a contact card</h2>
               </div>
               <button className="icon-button" type="button" onClick={() => setShowContactHelp(false)} aria-label="Close contact steps">
                 <X size={18} />
               </button>
             </div>
             <p className="contact-modal-copy">
-              Apple does not let a website open Contacts, choose a person, and read the details automatically. Use a contact
-              card file instead, then this app fills the lead form for you.
+              Apple does not let a website pull directly from Contacts. Share a contact card, then import it here and the form fills for you.
             </p>
             <ol className="contact-steps">
-              <li>Open the iPhone Contacts app and choose the person.</li>
-              <li>Tap Share Contact, then save or share the contact card as a `.vcf` file.</li>
-              <li>Come back here, tap Import vCard, and select that file.</li>
+              <li>Open Contacts and choose the person.</li>
+              <li>Tap Share Contact and save the contact card.</li>
+              <li>Return here, tap vCard, and select it.</li>
             </ol>
             <button className="primary-button" type="button" onClick={() => setShowContactHelp(false)}>
               Got it
@@ -821,8 +820,8 @@ function App() {
         <section className="list-panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Pipeline</p>
-              <h2>Leads</h2>
+              <p className="eyebrow">Lead Book</p>
+              <h2>Estate inquiries</h2>
             </div>
             <span className="count-pill">{filteredLeads.length}</span>
           </div>
@@ -834,7 +833,7 @@ function App() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search name, business, email, phone, notes"
+                placeholder="Search the lead book"
               />
             </label>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status">
@@ -855,8 +854,8 @@ function App() {
           <div className="lead-list">
             {leads.length === 0 && (
               <div className="empty-state">
-                <strong>No leads yet</strong>
-                <p>Add the first inquiry to start the team pipeline on this device.</p>
+                <strong>The lead book is ready</strong>
+                <p>Add the first inquiry when someone reaches out.</p>
               </div>
             )}
             {leads.length > 0 && filteredLeads.length === 0 && (
@@ -900,7 +899,7 @@ function App() {
         <aside className="detail-panel">
           <div className="panel-heading">
             <div>
-              <p className="eyebrow">Detail View</p>
+              <p className="eyebrow">Selected Lead</p>
               <h2>{selectedLead ? selectedLead.contactName : "No lead selected"}</h2>
             </div>
             {selectedLead && <span className={`status-pill ${getStatusClass(selectedLead.status)}`}>{selectedLead.status}</span>}
