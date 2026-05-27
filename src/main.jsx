@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AlertCircle,
@@ -8,9 +8,11 @@ import {
   Download,
   Edit3,
   Mail,
+  Mic,
   Phone,
   Plus,
   Search,
+  Square,
   Trash2,
   X,
 } from "lucide-react";
@@ -173,7 +175,36 @@ function validateLead(lead) {
   return "";
 }
 
-function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
+const dictationLabels = {
+  contactName: "Name",
+  organization: "Organization",
+  phone: "Phone",
+  email: "Email",
+  notes: "Notes",
+};
+
+function mergeDictationValue(currentValue, transcript) {
+  const cleanedTranscript = transcript.trim();
+  if (!cleanedTranscript) return currentValue;
+  if (!currentValue.trim()) return cleanedTranscript;
+  return `${currentValue.trim()} ${cleanedTranscript}`;
+}
+
+function LeadForm({
+  activeDictationField,
+  dictationSupported,
+  form,
+  isDictating,
+  isEditing,
+  onCancel,
+  onChange,
+  onFieldFocus,
+  onStartDictation,
+  onStopDictation,
+  onSubmit,
+}) {
+  const activeLabel = dictationLabels[activeDictationField] || "Notes";
+
   return (
     <form className="lead-form" onSubmit={onSubmit}>
       <div className="panel-heading">
@@ -181,12 +212,33 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
           <p className="eyebrow">{isEditing ? "Edit Lead" : "Add Lead"}</p>
           <h2>{isEditing ? form.contactName || "Lead details" : "New inquiry"}</h2>
         </div>
-        {isEditing && (
-          <button className="icon-button" type="button" onClick={onCancel} aria-label="Cancel editing">
-            <X size={18} />
+        <div className="heading-actions">
+          <button
+            className={`dictate-button ${isDictating ? "recording" : ""}`}
+            type="button"
+            onClick={isDictating ? onStopDictation : onStartDictation}
+            disabled={!dictationSupported}
+            title={
+              dictationSupported
+                ? `Dictate into ${activeLabel}`
+                : "Dictation is not supported in this browser. Try Chrome or Safari."
+            }
+          >
+            {isDictating ? <Square size={16} /> : <Mic size={17} />}
+            {isDictating ? "Stop" : "Dictate"}
           </button>
-        )}
+          {isEditing && (
+            <button className="icon-button" type="button" onClick={onCancel} aria-label="Cancel editing">
+              <X size={18} />
+            </button>
+          )}
+        </div>
       </div>
+      <p className="dictation-hint">
+        {dictationSupported
+          ? `Dictation fills the selected field: ${activeLabel}.`
+          : "Dictation needs a browser with speech recognition, such as Chrome or Safari."}
+      </p>
 
       <div className="form-grid">
         <label>
@@ -194,6 +246,7 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
           <input
             required
             value={form.contactName}
+            onFocus={() => onFieldFocus("contactName")}
             onChange={(event) => onChange("contactName", event.target.value)}
             placeholder="Guest or planner name"
           />
@@ -202,6 +255,7 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
           Organization / Business
           <input
             value={form.organization}
+            onFocus={() => onFieldFocus("organization")}
             onChange={(event) => onChange("organization", event.target.value)}
             placeholder="Company, family, agency"
           />
@@ -211,6 +265,7 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
           <input
             inputMode="tel"
             value={form.phone}
+            onFocus={() => onFieldFocus("phone")}
             onChange={(event) => onChange("phone", event.target.value)}
             placeholder="+1 000 000 0000"
           />
@@ -220,6 +275,7 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
           <input
             inputMode="email"
             value={form.email}
+            onFocus={() => onFieldFocus("email")}
             onChange={(event) => onChange("email", event.target.value)}
             placeholder="name@example.com"
           />
@@ -252,6 +308,7 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
           Notes
           <textarea
             value={form.notes}
+            onFocus={() => onFieldFocus("notes")}
             onChange={(event) => onChange("notes", event.target.value)}
             placeholder="Next step, preferences, budget, or follow-up context"
             rows="5"
@@ -275,14 +332,20 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
 }
 
 function App() {
+  const recognitionRef = useRef(null);
   const [leads, setLeads] = useState(loadLeads);
   const [form, setForm] = useState(blankLead);
+  const [activeDictationField, setActiveDictationField] = useState("notes");
   const [editingId, setEditingId] = useState(null);
+  const [isDictating, setIsDictating] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortMode, setSortMode] = useState("newest");
   const [notice, setNotice] = useState(null);
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const dictationSupported = Boolean(SpeechRecognition);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
@@ -293,6 +356,12 @@ function App() {
     const timeout = window.setTimeout(() => setNotice(null), 3200);
     return () => window.clearTimeout(timeout);
   }, [notice]);
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop();
+    };
+  }, []);
 
   const selectedLead = leads.find((lead) => lead.id === selectedId) ?? leads[0] ?? null;
   const isEditing = Boolean(editingId);
@@ -351,9 +420,60 @@ function App() {
     setForm((current) => ({ ...current, [field]: value }));
   }
 
+  function updateFormFromDictation(field, transcript) {
+    setForm((current) => ({
+      ...current,
+      [field]: mergeDictationValue(current[field] || "", transcript),
+    }));
+  }
+
+  function startDictation() {
+    if (!dictationSupported) {
+      showNotice("error", "Dictation is not available in this browser. Try Chrome or Safari.");
+      return;
+    }
+
+    recognitionRef.current?.stop();
+
+    const fieldToFill = activeDictationField || "notes";
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      setIsDictating(true);
+      showNotice("success", `Listening for ${dictationLabels[fieldToFill] || "Notes"}...`);
+    };
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript || "")
+        .join(" ")
+        .trim();
+      updateFormFromDictation(fieldToFill, transcript);
+      if (transcript) showNotice("success", `Transcribed into ${dictationLabels[fieldToFill] || "Notes"}.`);
+    };
+    recognition.onerror = (event) => {
+      showNotice("error", event.error === "not-allowed" ? "Microphone access was blocked." : "Dictation stopped before text was captured.");
+    };
+    recognition.onend = () => {
+      setIsDictating(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  }
+
+  function stopDictation() {
+    recognitionRef.current?.stop();
+    setIsDictating(false);
+  }
+
   function resetForm() {
     setForm(blankLead);
     setEditingId(null);
+    setActiveDictationField("notes");
   }
 
   function saveLead(event) {
@@ -498,10 +618,16 @@ function App() {
 
       <section className="dashboard-grid">
         <LeadForm
+          activeDictationField={activeDictationField}
+          dictationSupported={dictationSupported}
           form={form}
+          isDictating={isDictating}
           isEditing={isEditing}
           onCancel={resetForm}
           onChange={updateForm}
+          onFieldFocus={setActiveDictationField}
+          onStartDictation={startDictation}
+          onStopDictation={stopDictation}
           onSubmit={saveLead}
         />
 

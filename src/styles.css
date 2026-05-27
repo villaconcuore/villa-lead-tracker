@@ -52,6 +52,7 @@ button:hover {
 .lead-card-top,
 .detail-actions,
 .hero-actions,
+.heading-actions,
 .sync-pill {
   display: flex;
   align-items: center;
@@ -119,6 +120,11 @@ button:hover {
 .notice-error {
   color: #8b1e11;
   border-color: #8b1e11;
+}
+
+.heading-actions {
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .eyebrow {
@@ -276,6 +282,7 @@ textarea:focus {
 .primary-button,
 .secondary-button,
 .danger-button,
+.dictate-button,
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -296,15 +303,41 @@ textarea:focus {
 }
 
 .secondary-button,
+.dictate-button,
 .icon-button {
   background: #fbf8f1;
   color: #111111;
 }
 
 .secondary-button:hover,
+.dictate-button:hover,
 .icon-button:hover {
   background: #fffdf8;
   box-shadow: 3px 3px 0 rgba(17, 17, 17, 0.18);
+}
+
+.dictate-button {
+  min-height: 38px;
+  padding: 0 11px;
+}
+
+.dictate-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+  transform: none;
+}
+
+.dictate-button.recording {
+  background: #111111;
+  color: #fbf8f1;
+}
+
+.dictation-hint {
+  margin-top: 10px;
+  color: #6b655d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .danger-button {
@@ -558,6 +591,7 @@ dd {
   }
 
   .panel-heading,
+  .heading-actions,
   .lead-card-top,
   .detail-actions {
     align-items: flex-start;
@@ -565,6 +599,7 @@ dd {
   }
 
   .secondary-button,
+  .dictate-button,
   .danger-button,
   .form-actions .primary-button {
     width: 100%;

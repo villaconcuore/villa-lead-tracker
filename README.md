@@ -9,6 +9,7 @@ Public app: https://villaconcuore.github.io/villa-lead-tracker/
 - Clean mobile-friendly lead dashboard
 - Lead stats for Total Leads, New, Due Follow-Ups, and Booked
 - Add, edit, view, delete, and quick-update lead statuses
+- Dictate into the selected form field with browser speech recognition
 - Search by name, organization, email, phone, source, status, and notes
 - Filter by status and sort by newest, follow-up date, or status
 - Lead statuses: New, Contacted, Follow-Up, Interested, Booked, and Not Interested
