@@ -134,6 +134,10 @@ button:hover {
   margin-top: 14px;
 }
 
+.contact-tools .text-button {
+  grid-column: 1 / -1;
+}
+
 .hidden-file-input {
   display: none;
 }
@@ -294,6 +298,7 @@ textarea:focus {
 .secondary-button,
 .danger-button,
 .dictate-button,
+.text-button,
 .icon-button {
   display: inline-flex;
   align-items: center;
@@ -318,6 +323,21 @@ textarea:focus {
 .icon-button {
   background: #fbf8f1;
   color: #111111;
+}
+
+.text-button {
+  min-height: 34px;
+  border-color: transparent;
+  background: transparent;
+  color: #565047;
+  padding: 0;
+  justify-content: flex-start;
+  font-size: 0.83rem;
+}
+
+.text-button:hover {
+  background: transparent;
+  box-shadow: none;
 }
 
 .secondary-button:hover,
@@ -349,6 +369,47 @@ textarea:focus {
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.draft-hint {
+  margin-top: 8px;
+  color: #6b655d;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.modal-backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 17, 17, 0.38);
+  padding: 18px;
+}
+
+.contact-modal {
+  width: min(520px, 100%);
+  border: 1px solid #111111;
+  border-radius: 8px;
+  background: #fbf8f1;
+  padding: 20px;
+  box-shadow: 8px 8px 0 #111111;
+}
+
+.contact-modal-copy {
+  margin-top: 14px;
+  color: #4d473f;
+  line-height: 1.5;
+}
+
+.contact-steps {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+  padding-left: 22px;
+  color: #2d2a26;
+  line-height: 1.45;
 }
 
 .danger-button {
@@ -614,6 +675,7 @@ dd {
   .dictate-button,
   .danger-button,
   .contact-tools .secondary-button,
+  .contact-tools .text-button,
   .form-actions .primary-button {
     width: 100%;
   }

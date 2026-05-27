@@ -8,6 +8,7 @@ import {
   Download,
   Edit3,
   FileUp,
+  Info,
   Mail,
   Mic,
   Phone,
@@ -238,6 +239,7 @@ function LeadForm({
   onFieldFocus,
   onImportContactFile,
   onPickContact,
+  onShowContactHelp,
   onStartDictation,
   onStopDictation,
   onSubmit,
@@ -292,11 +294,15 @@ function LeadForm({
           }
         >
           <UserPlus size={17} />
-          Choose Contact
+          Add from Contacts
         </button>
         <button className="secondary-button" type="button" onClick={() => contactFileRef.current?.click()}>
           <FileUp size={17} />
-          Import Contact File
+          Import vCard
+        </button>
+        <button className="text-button" type="button" onClick={onShowContactHelp}>
+          <Info size={15} />
+          iPhone contact steps
         </button>
         <input
           ref={contactFileRef}
@@ -306,6 +312,7 @@ function LeadForm({
           onChange={onImportContactFile}
         />
       </div>
+      <p className="draft-hint">Drafts save automatically if you leave and come back.</p>
 
       <div className="form-grid">
         <label>
@@ -405,6 +412,7 @@ function App() {
   const [activeDictationField, setActiveDictationField] = useState("notes");
   const [editingId, setEditingId] = useState(null);
   const [isDictating, setIsDictating] = useState(false);
+  const [showContactHelp, setShowContactHelp] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
@@ -515,7 +523,7 @@ function App() {
 
   async function pickContact() {
     if (!contactPickerSupported) {
-      showNotice("error", "This browser cannot open Contacts directly. Import a contact file instead.");
+      setShowContactHelp(true);
       return;
     }
 
@@ -558,6 +566,7 @@ function App() {
       showNotice("error", "Could not read that contact file.");
     } finally {
       event.target.value = "";
+      setShowContactHelp(false);
     }
   }
 
@@ -746,6 +755,40 @@ function App() {
         </div>
       )}
 
+      {showContactHelp && (
+        <div className="modal-backdrop" role="presentation" onClick={() => setShowContactHelp(false)}>
+          <section
+            className="contact-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contact-help-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">iPhone Contacts</p>
+                <h2 id="contact-help-title">Add a saved contact</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setShowContactHelp(false)} aria-label="Close contact steps">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="contact-modal-copy">
+              Apple does not let a website open Contacts, choose a person, and read the details automatically. Use a contact
+              card file instead, then this app fills the lead form for you.
+            </p>
+            <ol className="contact-steps">
+              <li>Open the iPhone Contacts app and choose the person.</li>
+              <li>Tap Share Contact, then save or share the contact card as a `.vcf` file.</li>
+              <li>Come back here, tap Import vCard, and select that file.</li>
+            </ol>
+            <button className="primary-button" type="button" onClick={() => setShowContactHelp(false)}>
+              Got it
+            </button>
+          </section>
+        </div>
+      )}
+
       <section className="stats-grid" aria-label="Lead stats">
         {statCards.map((card) => (
           <article key={card.key}>
@@ -769,6 +812,7 @@ function App() {
           onFieldFocus={setActiveDictationField}
           onImportContactFile={importContactFile}
           onPickContact={pickContact}
+          onShowContactHelp={() => setShowContactHelp(true)}
           onStartDictation={startDictation}
           onStopDictation={stopDictation}
           onSubmit={saveLead}

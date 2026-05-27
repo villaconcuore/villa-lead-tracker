@@ -10,7 +10,7 @@ Public app: https://villaconcuore.github.io/villa-lead-tracker/
 - Lead stats for Total Leads, New, Due Follow-Ups, and Booked
 - Add, edit, view, delete, and quick-update lead statuses
 - Dictate into the selected form field with browser speech recognition
-- Choose a device contact where supported, or import a `.vcf` contact file
+- Add contacts through supported browser contact access, or import an iPhone `.vcf` contact card
 - Saved lead draft so unfinished entries survive leaving and returning to the app
 - Search by name, organization, email, phone, source, status, and notes
 - Filter by status and sort by newest, follow-up date, or status
@@ -48,7 +48,7 @@ This MVP stores leads in the browser using `localStorage`. There is no login, se
 
 Important limitation: each teammate's browser keeps its own copy of the lead list. Opening the public link works without accounts, but leads added on one person's device will not automatically appear on another person's device. Clearing browser site data will clear that browser's saved leads.
 
-Contact import note: some browsers do not allow websites to open the device Contacts app directly. When direct contact picking is unavailable, export or share the contact as a `.vcf` file and use **Import Contact File** in the app.
+Contact import note: iPhone Safari does not allow a normal website to open Apple Contacts, let you pick a person, and return that person's data automatically. Use **Import vCard** instead: open Contacts, choose a person, tap Share Contact, save/share the `.vcf` contact card, then import it in the app.
 
 Safest next upgrade for shared team data: keep the same no-login public interface, then add a small shared backend such as Supabase, Firebase, or Airtable so everyone sees the same lead list. A simple shared passcode can be added later if the public link needs light protection without full user accounts.
 
