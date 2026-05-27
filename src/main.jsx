@@ -7,6 +7,7 @@ import {
   CircleDot,
   Download,
   Edit3,
+  FileUp,
   Mail,
   Mic,
   Phone,
@@ -14,11 +15,13 @@ import {
   Search,
   Square,
   Trash2,
+  UserPlus,
   X,
 } from "lucide-react";
 import "./styles.css";
 
 const STORAGE_KEY = "villa-con-cuore-leads";
+const DRAFT_KEY = "villa-con-cuore-lead-draft";
 
 const statusOptions = ["New", "Contacted", "Follow-Up", "Interested", "Booked", "Not Interested"];
 const sourceOptions = ["Referral", "Website", "Instagram", "Email", "Phone", "Partner", "Walk-in", "Other"];
@@ -135,6 +138,16 @@ function loadLeads() {
   }
 }
 
+function loadDraft() {
+  try {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (!saved) return blankLead;
+    return { ...blankLead, ...JSON.parse(saved) };
+  } catch {
+    return blankLead;
+  }
+}
+
 function makeCsvValue(value) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
 }
@@ -188,8 +201,34 @@ function mergeDictationValue(currentValue, transcript) {
   return `${currentValue.trim()} ${cleanedTranscript}`;
 }
 
+function cleanVcardValue(value = "") {
+  return value.replaceAll("\\n", "\n").replaceAll("\\,", ",").replaceAll("\\;", ";").trim();
+}
+
+function getVcardField(lines, fieldName) {
+  const line = lines.find((item) => item.toUpperCase().startsWith(`${fieldName};`) || item.toUpperCase().startsWith(`${fieldName}:`));
+  if (!line) return "";
+  return cleanVcardValue(line.slice(line.indexOf(":") + 1));
+}
+
+function parseVcard(text) {
+  const unfolded = text.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, "");
+  const lines = unfolded.split(/\r?\n/).filter(Boolean);
+  const fullName = getVcardField(lines, "FN");
+  const fallbackName = getVcardField(lines, "N").split(";").filter(Boolean).join(" ");
+
+  return {
+    contactName: fullName || fallbackName,
+    organization: getVcardField(lines, "ORG"),
+    email: getVcardField(lines, "EMAIL"),
+    phone: getVcardField(lines, "TEL"),
+    notes: getVcardField(lines, "NOTE"),
+  };
+}
+
 function LeadForm({
   activeDictationField,
+  contactPickerSupported,
   dictationSupported,
   form,
   isDictating,
@@ -197,10 +236,13 @@ function LeadForm({
   onCancel,
   onChange,
   onFieldFocus,
+  onImportContactFile,
+  onPickContact,
   onStartDictation,
   onStopDictation,
   onSubmit,
 }) {
+  const contactFileRef = useRef(null);
   const activeLabel = dictationLabels[activeDictationField] || "Notes";
 
   return (
@@ -237,6 +279,33 @@ function LeadForm({
           ? `Dictation fills the selected field: ${activeLabel}.`
           : "Dictation needs a browser with speech recognition, such as Chrome or Safari."}
       </p>
+
+      <div className="contact-tools" aria-label="Contact import tools">
+        <button
+          className="secondary-button"
+          type="button"
+          onClick={onPickContact}
+          title={
+            contactPickerSupported
+              ? "Choose someone from this device's contacts"
+              : "This browser does not allow websites to open contacts directly. Use contact file import instead."
+          }
+        >
+          <UserPlus size={17} />
+          Choose Contact
+        </button>
+        <button className="secondary-button" type="button" onClick={() => contactFileRef.current?.click()}>
+          <FileUp size={17} />
+          Import Contact File
+        </button>
+        <input
+          ref={contactFileRef}
+          className="hidden-file-input"
+          type="file"
+          accept=".vcf,text/vcard,text/x-vcard"
+          onChange={onImportContactFile}
+        />
+      </div>
 
       <div className="form-grid">
         <label>
@@ -332,7 +401,7 @@ function LeadForm({
 function App() {
   const recognitionRef = useRef(null);
   const [leads, setLeads] = useState(loadLeads);
-  const [form, setForm] = useState(blankLead);
+  const [form, setForm] = useState(loadDraft);
   const [activeDictationField, setActiveDictationField] = useState("notes");
   const [editingId, setEditingId] = useState(null);
   const [isDictating, setIsDictating] = useState(false);
@@ -344,10 +413,16 @@ function App() {
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const dictationSupported = Boolean(SpeechRecognition);
+  const contactPickerSupported = Boolean(navigator.contacts?.select);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
   }, [leads]);
+
+  useEffect(() => {
+    if (editingId) return;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(form));
+  }, [form, editingId]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -425,6 +500,67 @@ function App() {
     }));
   }
 
+  function mergeContactIntoForm(contact) {
+    setForm((current) => ({
+      ...current,
+      contactName: contact.contactName || current.contactName,
+      organization: contact.organization || current.organization,
+      email: contact.email || current.email,
+      phone: contact.phone || current.phone,
+      source: current.source === blankLead.source ? "Phone" : current.source,
+      notes: contact.notes ? mergeDictationValue(current.notes || "", contact.notes) : current.notes,
+    }));
+    setActiveDictationField("notes");
+  }
+
+  async function pickContact() {
+    if (!contactPickerSupported) {
+      showNotice("error", "This browser cannot open Contacts directly. Import a contact file instead.");
+      return;
+    }
+
+    try {
+      const availableProperties = navigator.contacts.getProperties
+        ? await navigator.contacts.getProperties()
+        : ["name", "email", "tel"];
+      const requestedProperties = ["name", "email", "tel", "address"].filter((property) =>
+        availableProperties.includes(property),
+      );
+      const contacts = await navigator.contacts.select(requestedProperties, { multiple: false });
+      const contact = contacts?.[0];
+      if (!contact) return;
+      mergeContactIntoForm({
+        contactName: contact.name?.[0] || "",
+        email: contact.email?.[0] || "",
+        phone: contact.tel?.[0] || "",
+        notes: contact.address?.[0]?.addressLine?.join(", ") || "",
+      });
+      showNotice("success", "Contact added to the lead form.");
+    } catch (error) {
+      if (error?.name !== "AbortError") showNotice("error", "Could not open contacts on this device.");
+    }
+  }
+
+  async function importContactFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const contact = parseVcard(text);
+      if (!contact.contactName && !contact.email && !contact.phone) {
+        showNotice("error", "That contact file did not include a name, email, or phone.");
+        return;
+      }
+      mergeContactIntoForm(contact);
+      showNotice("success", "Contact file added to the lead form.");
+    } catch {
+      showNotice("error", "Could not read that contact file.");
+    } finally {
+      event.target.value = "";
+    }
+  }
+
   function startDictation() {
     if (!dictationSupported) {
       showNotice("error", "Dictation is not available in this browser. Try Chrome or Safari.");
@@ -474,6 +610,10 @@ function App() {
     setActiveDictationField("notes");
   }
 
+  function clearDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+  }
+
   function saveLead(event) {
     event.preventDefault();
 
@@ -492,6 +632,7 @@ function App() {
       );
       setSelectedId(editingId);
       resetForm();
+      clearDraft();
       showNotice("success", "Lead updated.");
       return;
     }
@@ -505,6 +646,7 @@ function App() {
     setLeads((current) => [newLead, ...current]);
     setSelectedId(newLead.id);
     resetForm();
+    clearDraft();
     showNotice("success", "Lead added.");
   }
 
@@ -617,6 +759,7 @@ function App() {
       <section className="dashboard-grid">
         <LeadForm
           activeDictationField={activeDictationField}
+          contactPickerSupported={contactPickerSupported}
           dictationSupported={dictationSupported}
           form={form}
           isDictating={isDictating}
@@ -624,6 +767,8 @@ function App() {
           onCancel={resetForm}
           onChange={updateForm}
           onFieldFocus={setActiveDictationField}
+          onImportContactFile={importContactFile}
+          onPickContact={pickContact}
           onStartDictation={startDictation}
           onStopDictation={stopDictation}
           onSubmit={saveLead}
