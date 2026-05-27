@@ -96,6 +96,31 @@ button:hover {
   fill: #111111;
 }
 
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 22px 0 0;
+  border: 1px solid #111111;
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 11px 13px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  box-shadow: 4px 4px 0 rgba(17, 17, 17, 0.14);
+}
+
+.notice-success svg {
+  color: #1f6f43;
+}
+
+.notice-error {
+  color: #8b1e11;
+  border-color: #8b1e11;
+}
+
 .eyebrow {
   margin: 0 0 8px;
   color: #686158;
@@ -200,6 +225,16 @@ dt,
 .form-grid {
   grid-template-columns: 1fr 1fr;
   margin: 18px 0;
+}
+
+.form-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.form-actions:has(.secondary-button) {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 label {
@@ -340,6 +375,16 @@ textarea:focus {
   font-weight: 780;
 }
 
+.lead-note-preview {
+  display: -webkit-box;
+  margin-top: 10px;
+  overflow: hidden;
+  color: #565047;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .lead-meta {
   display: flex;
   flex-wrap: wrap;
@@ -384,7 +429,11 @@ textarea:focus {
   background: #eee6d8;
 }
 
-.status-closed {
+.status-interested {
+  background: #e6efe8;
+}
+
+.status-not-interested {
   background: #e6e1d8;
 }
 
@@ -402,6 +451,15 @@ textarea:focus {
   gap: 6px;
   border-top: 1px solid #d9d2c7;
   padding: 14px 0;
+}
+
+.notes-detail dd {
+  display: block;
+  border: 1px solid #d9d2c7;
+  border-radius: 8px;
+  background: #fffdf8;
+  padding: 12px;
+  white-space: pre-wrap;
 }
 
 dt {
@@ -426,6 +484,16 @@ dd {
   border-radius: 8px;
   padding: 20px;
   text-align: center;
+}
+
+.empty-state strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #111111;
+}
+
+.empty-state p {
+  line-height: 1.45;
 }
 
 @media (max-width: 1120px) {
@@ -462,7 +530,9 @@ dd {
 
   .dashboard-grid,
   .form-grid,
-  .filters {
+  .filters,
+  .form-actions,
+  .form-actions:has(.secondary-button) {
     grid-template-columns: 1fr;
   }
 
@@ -495,7 +565,8 @@ dd {
   }
 
   .secondary-button,
-  .danger-button {
+  .danger-button,
+  .form-actions .primary-button {
     width: 100%;
   }
 

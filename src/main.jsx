@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
+  AlertCircle,
   CalendarDays,
+  CheckCircle2,
   CircleDot,
   Download,
   Edit3,
@@ -16,16 +18,19 @@ import "./styles.css";
 
 const STORAGE_KEY = "villa-con-cuore-leads";
 
-const statusOptions = ["New", "Contacted", "Follow-Up", "Booked", "Closed"];
-const leadTypeOptions = ["Wedding", "Corporate", "Retreat", "Private Event", "Lodging", "Other"];
-const interestOptions = ["Villa Rental", "Event Booking", "Tour", "Partnership", "Photo Shoot", "Other"];
-const assigneeOptions = ["Elvis", "Concierge", "Events", "Sales"];
+const statusOptions = ["New", "Contacted", "Follow-Up", "Interested", "Booked", "Not Interested"];
+const sourceOptions = ["Referral", "Website", "Instagram", "Email", "Phone", "Partner", "Walk-in", "Other"];
+const sortOptions = [
+  { value: "newest", label: "Newest" },
+  { value: "followUp", label: "Follow-up date" },
+  { value: "status", label: "Status" },
+];
 
 const statCards = [
   { key: "total", label: "Total Leads", detail: "All inquiries" },
   { key: "new", label: "New", detail: "Needs first touch" },
   { key: "due", label: "Due Follow-Ups", detail: "Today or overdue" },
-  { key: "booked", label: "Booked", detail: "Confirmed interest" },
+  { key: "booked", label: "Booked", detail: "Confirmed bookings" },
 ];
 
 const blankLead = {
@@ -33,11 +38,9 @@ const blankLead = {
   organization: "",
   email: "",
   phone: "",
-  leadType: "Wedding",
-  interest: "Villa Rental",
+  source: "Referral",
   status: "New",
   followUpDate: "",
-  assignedTo: "Elvis",
   notes: "",
 };
 
@@ -48,6 +51,7 @@ const starterLeads = [
     organization: "Laurent Family Office",
     email: "sofia@example.com",
     phone: "+1 415 555 0198",
+    source: "Referral",
     leadType: "Private Event",
     interest: "Villa Rental",
     status: "Follow-Up",
@@ -55,6 +59,7 @@ const starterLeads = [
     assignedTo: "Elvis",
     notes: "Send courtyard capacity details and preferred weekend rates.",
     createdAt: "2026-05-20T12:00:00.000Z",
+    updatedAt: "2026-05-20T12:00:00.000Z",
   },
   {
     id: "lead-2",
@@ -62,6 +67,7 @@ const starterLeads = [
     organization: "Northstar Retreats",
     email: "marco@example.com",
     phone: "+1 212 555 0134",
+    source: "Website",
     leadType: "Retreat",
     interest: "Event Booking",
     status: "New",
@@ -69,6 +75,7 @@ const starterLeads = [
     assignedTo: "Concierge",
     notes: "Interested in a three-night executive retreat with chef service.",
     createdAt: "2026-05-23T12:00:00.000Z",
+    updatedAt: "2026-05-23T12:00:00.000Z",
   },
   {
     id: "lead-3",
@@ -76,6 +83,7 @@ const starterLeads = [
     organization: "Stone & Co.",
     email: "amelia@example.com",
     phone: "+44 20 5555 0110",
+    source: "Instagram",
     leadType: "Wedding",
     interest: "Tour",
     status: "Booked",
@@ -83,20 +91,86 @@ const starterLeads = [
     assignedTo: "Events",
     notes: "Booked a private tour and tasting walkthrough.",
     createdAt: "2026-05-25T12:00:00.000Z",
+    updatedAt: "2026-05-25T12:00:00.000Z",
   },
 ];
+
+function normalizeStatus(status) {
+  if (status === "Closed") return "Not Interested";
+  return statusOptions.includes(status) ? status : "New";
+}
+
+function normalizeSource(source) {
+  return sourceOptions.includes(source) ? source : "Other";
+}
+
+function normalizeLead(lead, index = 0) {
+  const createdAt = lead.createdAt || lead.createdDate || new Date().toISOString();
+
+  return {
+    ...lead,
+    id: lead.id || `lead-${Date.now()}-${index}`,
+    contactName: (lead.contactName || lead.name || "").trim(),
+    organization: (lead.organization || lead.business || "").trim(),
+    email: (lead.email || "").trim(),
+    phone: (lead.phone || "").trim(),
+    source: normalizeSource(lead.source),
+    status: normalizeStatus(lead.status),
+    followUpDate: lead.followUpDate || lead.followupDate || "",
+    notes: lead.notes || lead.nextStep || "",
+    createdAt,
+    updatedAt: lead.updatedAt || lead.updatedDate || createdAt,
+  };
+}
 
 function loadLeads() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : starterLeads;
+    const parsed = saved ? JSON.parse(saved) : starterLeads;
+    return Array.isArray(parsed) ? parsed.map(normalizeLead) : starterLeads.map(normalizeLead);
   } catch {
-    return starterLeads;
+    return starterLeads.map(normalizeLead);
   }
 }
 
 function makeCsvValue(value) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
+}
+
+function formatDate(value) {
+  if (!value) return "Not scheduled";
+  const date = new Date(value.includes("T") ? value : `${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "Not scheduled";
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(date);
+}
+
+function getStatusClass(status) {
+  return `status-${status.toLowerCase().replaceAll(" ", "-")}`;
+}
+
+function cleanForm(form) {
+  return {
+    ...form,
+    contactName: form.contactName.trim(),
+    organization: form.organization.trim(),
+    email: form.email.trim(),
+    phone: form.phone.trim(),
+    notes: form.notes.trim(),
+  };
+}
+
+function validateLead(lead) {
+  if (!lead.contactName) return "Add a contact name before saving.";
+  if (!lead.email && !lead.phone) return "Add an email or phone number so the team can follow up.";
+  if (lead.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email)) {
+    return "Use a valid email address, or leave email blank.";
+  }
+  if (lead.phone) {
+    const digits = lead.phone.replace(/\D/g, "");
+    const phoneHasAllowedChars = /^[0-9()+\-\s.]+$/.test(lead.phone);
+    if (!phoneHasAllowedChars || digits.length < 7) return "Use a valid phone number, or leave phone blank.";
+  }
+  return "";
 }
 
 function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
@@ -116,7 +190,7 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
 
       <div className="form-grid">
         <label>
-          Contact Name
+          Name
           <input
             required
             value={form.contactName}
@@ -125,7 +199,7 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
           />
         </label>
         <label>
-          Organization
+          Organization / Business
           <input
             value={form.organization}
             onChange={(event) => onChange("organization", event.target.value)}
@@ -133,34 +207,27 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
           />
         </label>
         <label>
-          Email
-          <input
-            type="email"
-            value={form.email}
-            onChange={(event) => onChange("email", event.target.value)}
-            placeholder="name@example.com"
-          />
-        </label>
-        <label>
           Phone
           <input
+            inputMode="tel"
             value={form.phone}
             onChange={(event) => onChange("phone", event.target.value)}
             placeholder="+1 000 000 0000"
           />
         </label>
         <label>
-          Lead Type
-          <select value={form.leadType} onChange={(event) => onChange("leadType", event.target.value)}>
-            {leadTypeOptions.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
+          Email
+          <input
+            inputMode="email"
+            value={form.email}
+            onChange={(event) => onChange("email", event.target.value)}
+            placeholder="name@example.com"
+          />
         </label>
         <label>
-          Interest
-          <select value={form.interest} onChange={(event) => onChange("interest", event.target.value)}>
-            {interestOptions.map((option) => (
+          Source
+          <select value={form.source} onChange={(event) => onChange("source", event.target.value)}>
+            {sourceOptions.map((option) => (
               <option key={option}>{option}</option>
             ))}
           </select>
@@ -173,37 +240,36 @@ function LeadForm({ form, isEditing, onCancel, onChange, onSubmit }) {
             ))}
           </select>
         </label>
-        <label>
-          Follow-Up Date
+        <label className="wide-field">
+          Follow-up date
           <input
             type="date"
             value={form.followUpDate}
             onChange={(event) => onChange("followUpDate", event.target.value)}
           />
         </label>
-        <label>
-          Assigned To
-          <select value={form.assignedTo} onChange={(event) => onChange("assignedTo", event.target.value)}>
-            {assigneeOptions.map((option) => (
-              <option key={option}>{option}</option>
-            ))}
-          </select>
-        </label>
         <label className="wide-field">
-          Notes / Next Step
+          Notes
           <textarea
             value={form.notes}
             onChange={(event) => onChange("notes", event.target.value)}
-            placeholder="What should happen next?"
-            rows="4"
+            placeholder="Next step, preferences, budget, or follow-up context"
+            rows="5"
           />
         </label>
       </div>
 
-      <button className="primary-button" type="submit">
-        <Plus size={18} />
-        {isEditing ? "Save changes" : "Add lead"}
-      </button>
+      <div className="form-actions">
+        <button className="primary-button" type="submit">
+          <Plus size={18} />
+          {isEditing ? "Save changes" : "Add lead"}
+        </button>
+        {isEditing && (
+          <button className="secondary-button" type="button" onClick={onCancel}>
+            Cancel
+          </button>
+        )}
+      </div>
     </form>
   );
 }
@@ -215,11 +281,18 @@ function App() {
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [typeFilter, setTypeFilter] = useState("All");
+  const [sortMode, setSortMode] = useState("newest");
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
   }, [leads]);
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timeout = window.setTimeout(() => setNotice(null), 3200);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   const selectedLead = leads.find((lead) => lead.id === selectedId) ?? leads[0] ?? null;
   const isEditing = Boolean(editingId);
@@ -232,7 +305,7 @@ function App() {
       total: leads.length,
       new: leads.filter((lead) => lead.status === "New").length,
       due: leads.filter((lead) => {
-        if (!lead.followUpDate || lead.status === "Booked" || lead.status === "Closed") return false;
+        if (!lead.followUpDate || ["Booked", "Not Interested"].includes(lead.status)) return false;
         return new Date(`${lead.followUpDate}T00:00:00`) <= today;
       }).length,
       booked: leads.filter((lead) => lead.status === "Booked").length,
@@ -241,25 +314,38 @@ function App() {
 
   const filteredLeads = useMemo(() => {
     const searchText = query.trim().toLowerCase();
-    return leads.filter((lead) => {
+    const filtered = leads.filter((lead) => {
       const matchesStatus = statusFilter === "All" || lead.status === statusFilter;
-      const matchesType = typeFilter === "All" || lead.leadType === typeFilter;
       const haystack = [
         lead.contactName,
         lead.organization,
         lead.email,
         lead.phone,
-        lead.leadType,
-        lead.interest,
+        lead.source,
         lead.status,
-        lead.assignedTo,
         lead.notes,
       ]
         .join(" ")
         .toLowerCase();
-      return matchesStatus && matchesType && haystack.includes(searchText);
+      return matchesStatus && haystack.includes(searchText);
     });
-  }, [leads, query, statusFilter, typeFilter]);
+
+    return [...filtered].sort((a, b) => {
+      if (sortMode === "followUp") {
+        const aTime = a.followUpDate ? new Date(`${a.followUpDate}T00:00:00`).getTime() : Number.MAX_SAFE_INTEGER;
+        const bTime = b.followUpDate ? new Date(`${b.followUpDate}T00:00:00`).getTime() : Number.MAX_SAFE_INTEGER;
+        return aTime - bTime;
+      }
+      if (sortMode === "status") {
+        return statusOptions.indexOf(a.status) - statusOptions.indexOf(b.status);
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [leads, query, statusFilter, sortMode]);
+
+  function showNotice(type, message) {
+    setNotice({ type, message });
+  }
 
   function updateForm(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -273,23 +359,35 @@ function App() {
   function saveLead(event) {
     event.preventDefault();
 
+    const cleaned = cleanForm(form);
+    const validationMessage = validateLead(cleaned);
+    if (validationMessage) {
+      showNotice("error", validationMessage);
+      return;
+    }
+
+    const now = new Date().toISOString();
+
     if (editingId) {
       setLeads((current) =>
-        current.map((lead) => (lead.id === editingId ? { ...lead, ...form, updatedAt: new Date().toISOString() } : lead)),
+        current.map((lead) => (lead.id === editingId ? { ...lead, ...cleaned, updatedAt: now } : lead)),
       );
       setSelectedId(editingId);
       resetForm();
+      showNotice("success", "Lead updated.");
       return;
     }
 
     const newLead = {
-      ...form,
+      ...cleaned,
       id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
     setLeads((current) => [newLead, ...current]);
     setSelectedId(newLead.id);
     resetForm();
+    showNotice("success", "Lead added.");
   }
 
   function editLead(lead) {
@@ -300,49 +398,54 @@ function App() {
       organization: lead.organization,
       email: lead.email,
       phone: lead.phone,
-      leadType: lead.leadType,
-      interest: lead.interest,
+      source: lead.source,
       status: lead.status,
       followUpDate: lead.followUpDate,
-      assignedTo: lead.assignedTo,
       notes: lead.notes,
     });
   }
 
-  function deleteLead(id) {
-    const nextLeads = leads.filter((lead) => lead.id !== id);
+  function deleteLead(lead) {
+    const ok = window.confirm(`Delete ${lead.contactName || "this lead"}? This cannot be undone.`);
+    if (!ok) return;
+
+    const nextLeads = leads.filter((item) => item.id !== lead.id);
     setLeads(nextLeads);
-    if (selectedId === id) setSelectedId(nextLeads[0]?.id ?? null);
-    if (editingId === id) resetForm();
+    if (selectedId === lead.id) setSelectedId(nextLeads[0]?.id ?? null);
+    if (editingId === lead.id) resetForm();
+    showNotice("success", "Lead deleted.");
   }
 
   function updateStatus(id, status) {
-    setLeads((current) => current.map((lead) => (lead.id === id ? { ...lead, status } : lead)));
+    setLeads((current) =>
+      current.map((lead) => (lead.id === id ? { ...lead, status, updatedAt: new Date().toISOString() } : lead)),
+    );
+    showNotice("success", `Status changed to ${status}.`);
   }
 
   function exportCsv() {
     const headers = [
-      "Contact Name",
-      "Organization",
-      "Email",
+      "Name",
+      "Organization / Business",
       "Phone",
-      "Lead Type",
-      "Interest",
+      "Email",
+      "Source",
       "Status",
-      "Follow-Up Date",
-      "Assigned To",
-      "Notes / Next Step",
+      "Follow-up Date",
+      "Created Date",
+      "Last Updated Date",
+      "Notes",
     ];
     const rows = filteredLeads.map((lead) => [
       lead.contactName,
       lead.organization,
-      lead.email,
       lead.phone,
-      lead.leadType,
-      lead.interest,
+      lead.email,
+      lead.source,
       lead.status,
       lead.followUpDate,
-      lead.assignedTo,
+      lead.createdAt,
+      lead.updatedAt,
       lead.notes,
     ]);
     const csv = [headers, ...rows].map((row) => row.map(makeCsvValue).join(",")).join("\n");
@@ -353,6 +456,7 @@ function App() {
     link.download = "villa-con-cuore-leads.csv";
     link.click();
     URL.revokeObjectURL(url);
+    showNotice("success", "CSV export downloaded.");
   }
 
   return (
@@ -361,12 +465,12 @@ function App() {
         <div>
           <p className="eyebrow">Villa Con Cuore</p>
           <h1>Lead Tracker</h1>
-          <p className="hero-copy">A quiet, no-login workspace for inquiries, next steps, and event follow-through.</p>
+          <p className="hero-copy">A simple no-login workspace for inquiries, next steps, and team follow-through.</p>
         </div>
         <div className="hero-actions">
           <span className="sync-pill">
             <CircleDot size={12} />
-            Browser saved
+            Device saved
           </span>
           <button className="secondary-button" type="button" onClick={exportCsv}>
             <Download size={18} />
@@ -374,6 +478,13 @@ function App() {
           </button>
         </div>
       </header>
+
+      {notice && (
+        <div className={`notice notice-${notice.type}`} role="status">
+          {notice.type === "error" ? <AlertCircle size={18} /> : <CheckCircle2 size={18} />}
+          <span>{notice.message}</span>
+        </div>
+      )}
 
       <section className="stats-grid" aria-label="Lead stats">
         {statCards.map((card) => (
@@ -403,14 +514,14 @@ function App() {
             <span className="count-pill">{filteredLeads.length}</span>
           </div>
 
-          <div className="filters" aria-label="Search and filter leads">
+          <div className="filters" aria-label="Search, filter, and sort leads">
             <label className="search-box">
               <Search size={18} />
               <input
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search leads"
+                placeholder="Search name, business, email, phone, notes"
               />
             </label>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter by status">
@@ -419,16 +530,28 @@ function App() {
                 <option key={status}>{status}</option>
               ))}
             </select>
-            <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} aria-label="Filter by lead type">
-              <option>All</option>
-              {leadTypeOptions.map((type) => (
-                <option key={type}>{type}</option>
+            <select value={sortMode} onChange={(event) => setSortMode(event.target.value)} aria-label="Sort leads">
+              {sortOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="lead-list">
-            {filteredLeads.length === 0 && <p className="empty-state">No leads match those filters.</p>}
+            {leads.length === 0 && (
+              <div className="empty-state">
+                <strong>No leads yet</strong>
+                <p>Add the first inquiry to start the team pipeline on this device.</p>
+              </div>
+            )}
+            {leads.length > 0 && filteredLeads.length === 0 && (
+              <div className="empty-state">
+                <strong>No matching leads</strong>
+                <p>Try clearing the search or changing the status filter.</p>
+              </div>
+            )}
             {filteredLeads.map((lead) => (
               <article
                 className={`lead-card ${selectedLead?.id === lead.id ? "selected" : ""}`}
@@ -437,24 +560,24 @@ function App() {
               >
                 <div className="lead-card-top">
                   <div>
-                    <h3>{lead.contactName}</h3>
+                    <h3>{lead.contactName || "Unnamed lead"}</h3>
                     <p>{lead.organization || "No organization"}</p>
                   </div>
                   <select
                     value={lead.status}
                     onClick={(event) => event.stopPropagation()}
                     onChange={(event) => updateStatus(lead.id, event.target.value)}
-                    aria-label={`Update ${lead.contactName} status`}
+                    aria-label={`Update ${lead.contactName || "lead"} status`}
                   >
                     {statusOptions.map((status) => (
                       <option key={status}>{status}</option>
                     ))}
                   </select>
                 </div>
+                <p className="lead-note-preview">{lead.notes || "No notes yet."}</p>
                 <div className="lead-meta">
-                  <span>{lead.leadType}</span>
-                  <span>{lead.interest}</span>
-                  <span className={lead.followUpDate ? "date-chip" : ""}>{lead.followUpDate || "No follow-up"}</span>
+                  <span>{lead.source || "No source"}</span>
+                  <span className={lead.followUpDate ? "date-chip" : ""}>{formatDate(lead.followUpDate)}</span>
                 </div>
               </article>
             ))}
@@ -467,7 +590,7 @@ function App() {
               <p className="eyebrow">Detail View</p>
               <h2>{selectedLead ? selectedLead.contactName : "No lead selected"}</h2>
             </div>
-            {selectedLead && <span className={`status-pill status-${selectedLead.status.toLowerCase().replaceAll(" ", "-")}`}>{selectedLead.status}</span>}
+            {selectedLead && <span className={`status-pill ${getStatusClass(selectedLead.status)}`}>{selectedLead.status}</span>}
           </div>
 
           {selectedLead ? (
@@ -477,7 +600,7 @@ function App() {
                   <Edit3 size={17} />
                   Edit
                 </button>
-                <button className="danger-button" type="button" onClick={() => deleteLead(selectedLead.id)}>
+                <button className="danger-button" type="button" onClick={() => deleteLead(selectedLead)}>
                   <Trash2 size={17} />
                   Delete
                 </button>
@@ -485,41 +608,53 @@ function App() {
 
               <dl className="detail-list">
                 <div>
-                  <dt>Organization</dt>
+                  <dt>Organization / Business</dt>
                   <dd>{selectedLead.organization || "Not provided"}</dd>
                 </div>
                 <div>
-                  <dt>Email</dt>
-                  <dd><Mail size={15} />{selectedLead.email || "Not provided"}</dd>
-                </div>
-                <div>
                   <dt>Phone</dt>
-                  <dd><Phone size={15} />{selectedLead.phone || "Not provided"}</dd>
+                  <dd>
+                    <Phone size={15} />
+                    {selectedLead.phone || "Not provided"}
+                  </dd>
                 </div>
                 <div>
-                  <dt>Lead Type</dt>
-                  <dd>{selectedLead.leadType}</dd>
+                  <dt>Email</dt>
+                  <dd>
+                    <Mail size={15} />
+                    {selectedLead.email || "Not provided"}
+                  </dd>
                 </div>
                 <div>
-                  <dt>Interest</dt>
-                  <dd>{selectedLead.interest}</dd>
+                  <dt>Source</dt>
+                  <dd>{selectedLead.source || "Not provided"}</dd>
                 </div>
                 <div>
-                  <dt>Follow-Up Date</dt>
-                  <dd><CalendarDays size={15} />{selectedLead.followUpDate || "Not scheduled"}</dd>
+                  <dt>Follow-up date</dt>
+                  <dd>
+                    <CalendarDays size={15} />
+                    {formatDate(selectedLead.followUpDate)}
+                  </dd>
                 </div>
                 <div>
-                  <dt>Assigned To</dt>
-                  <dd>{selectedLead.assignedTo}</dd>
+                  <dt>Created</dt>
+                  <dd>{formatDate(selectedLead.createdAt)}</dd>
                 </div>
                 <div>
-                  <dt>Notes / Next Step</dt>
+                  <dt>Last updated</dt>
+                  <dd>{formatDate(selectedLead.updatedAt)}</dd>
+                </div>
+                <div className="notes-detail">
+                  <dt>Notes</dt>
                   <dd>{selectedLead.notes || "No notes yet."}</dd>
                 </div>
               </dl>
             </>
           ) : (
-            <p className="empty-state">Add a lead to see details here.</p>
+            <div className="empty-state">
+              <strong>No lead selected</strong>
+              <p>Add or select a lead to see the full detail view.</p>
+            </div>
           )}
         </aside>
       </section>
